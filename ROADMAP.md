@@ -23,9 +23,9 @@ Progress tracker for this project. Each item is one small, reviewable commit.
   - [x] Offline hashing embedder + dense vector search
   - [x] Reciprocal rank fusion and `--retriever bm25|dense|hybrid` flag
   - [x] Config comparison script and measured results in README
-- [ ] Reranking step and before/after eval comparison
+- [x] Reranking step and before/after eval comparison
   - [x] Lexical coverage/proximity reranker behind `--rerank`
-  - [ ] Before/after eval table in README
+  - [x] Before/after eval table in README
 - [ ] Query rewriting for short queries
   - [ ] Short keyword-style questions in the eval set
   - [ ] Rule-based rewriter (offline) + optional Claude rewriter

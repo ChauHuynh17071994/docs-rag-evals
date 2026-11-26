@@ -28,7 +28,8 @@ flowchart LR
     I --> R
     E --> R
     R -->|top score below threshold| X[Refuse]
-    R --> L[LLM backend<br/>Claude or extractive]
+    R --> RR[Optional reranker]
+    RR --> L[LLM backend<br/>Claude or extractive]
     L --> V[Citation validator]
     V --> A[Answer + citations + metadata]
 ```
@@ -46,17 +47,35 @@ Run with `python -m rag.cli eval`. Metrics:
 | cites_gold | answered questions cite the correct chunk |
 | refusal_acc | refuses unanswerable questions, answers answerable ones |
 
-### Retriever comparison
+### Retriever and reranker comparison
 
-Measured with `python -m evals.compare` (offline `extractive` backend, k = 4, 25 questions, latency on a laptop-class CPU):
+Measured with `python -m evals.compare -k 4` and `-k 1` (offline `extractive` backend, 25 questions; latency is the in-process pipeline time on a small cloud container, no LLM call).
+
+k = 4:
 
 | config | recall@k | mrr | answer_match | cites_gold | refusal_acc | avg_latency_ms |
 |---|---|---|---|---|---|---|
-| bm25 | 0.952 | 0.929 | 0.810 | 0.950 | 0.880 | 0.10 |
-| dense | 1.000 | 1.000 | 0.857 | 1.000 | 0.920 | 1.85 |
-| hybrid | 1.000 | 1.000 | 0.857 | 1.000 | 0.920 | 1.97 |
+| bm25 | 0.952 | 0.929 | 0.810 | 0.950 | 0.880 | 0.11 |
+| bm25 + rerank | 0.952 | 0.952 | 0.810 | 1.000 | 0.880 | 0.17 |
+| dense | 1.000 | 1.000 | 0.857 | 1.000 | 0.920 | 2.04 |
+| dense + rerank | 1.000 | 1.000 | 0.857 | 1.000 | 0.920 | 2.29 |
+| hybrid | 1.000 | 1.000 | 0.857 | 1.000 | 0.920 | 2.91 |
+| hybrid + rerank | 1.000 | 1.000 | 0.857 | 1.000 | 0.920 | 3.61 |
+
+k = 1 (only the top chunk reaches the generator, so ranking quality matters most):
+
+| config | recall@k | mrr | answer_match | cites_gold | refusal_acc | avg_latency_ms |
+|---|---|---|---|---|---|---|
+| bm25 | 0.905 | 0.905 | 0.810 | 0.950 | 0.880 | 0.09 |
+| bm25 + rerank | 0.952 | 0.952 | 0.810 | 1.000 | 0.880 | 0.15 |
+| dense | 1.000 | 1.000 | 0.857 | 1.000 | 0.920 | 1.78 |
+| dense + rerank | 1.000 | 1.000 | 0.857 | 1.000 | 0.920 | 2.07 |
+| hybrid | 1.000 | 1.000 | 0.857 | 1.000 | 0.920 | 1.81 |
+| hybrid + rerank | 1.000 | 1.000 | 0.857 | 1.000 | 0.920 | 1.96 |
 
 The BM25 miss is q11 ("minimum password length"): the document says "Passwords must be at least 14 characters long", and exact-token BM25 does not match "password" to "passwords". Character n-gram embeddings close that gap. The dense refusal threshold (`--min-similarity 0.22`) was calibrated on this same small set, so treat these numbers as indicative, not as a held-out result. The two remaining refusal errors (u02, u04) come from BM25 matching the company name in the corpus intro.
+
+The lexical reranker (`--rerank`) rescoring a 20-chunk pool by query-term coverage, term proximity and heading match lifts BM25 at k = 1 (recall 0.905 → 0.952, cites_gold 0.950 → 1.000) for under 0.1 ms. Dense and hybrid retrieval already rank every gold chunk first on this set, so the reranker has no headroom there; a harder eval set is needed to separate them.
 
 CI fails if recall@k, MRR, citation validity or refusal accuracy drop below their thresholds (`evals/run_eval.py`).
 
@@ -80,7 +99,8 @@ python -m rag.cli --retriever hybrid ask "What is the minimum password length?"
 
 # Evaluate
 python -m rag.cli eval
-python -m evals.compare                     # bm25 vs dense vs hybrid table
+python -m evals.compare                     # retriever x reranker table
+python -m rag.cli --retriever hybrid --rerank eval
 RAG_BACKEND=claude python -m rag.cli eval   # compare backends
 
 # API
@@ -97,6 +117,7 @@ rag/
   bm25.py       Okapi BM25 retriever
   embeddings.py hashing embedder, dense index, optional sentence-transformers
   index.py      bm25 / dense / hybrid (RRF) search + JSON persistence
+  rerank.py     second-stage lexical reranker
   llm.py        LLM protocol, Claude and extractive backends, prompt
   pipeline.py   retrieve -> refuse -> generate -> validate citations
   api.py        FastAPI service
