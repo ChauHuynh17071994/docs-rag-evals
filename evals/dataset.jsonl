@@ -23,3 +23,11 @@
 {"id": "u02", "question": "Does the company offer a gym membership?", "gold": [], "expect": []}
 {"id": "u03", "question": "What is the stock option vesting schedule?", "gold": [], "expect": []}
 {"id": "u04", "question": "Which pension provider does Northwind use?", "gold": [], "expect": []}
+{"id": "s01", "question": "wfh days per week", "gold": ["remote-work.md#0"], "expect": ["3 days"]}
+{"id": "s02", "question": "hotel cap", "gold": ["travel-policy.md#4"], "expect": ["160 euros"]}
+{"id": "s03", "question": "stolen laptop", "gold": ["it-security.md#1"], "expect": ["2 hours"]}
+{"id": "s04", "question": "pw length", "gold": ["it-security.md#0"], "expect": ["14 characters"]}
+{"id": "s05", "question": "sick note", "gold": ["leave-policy.md#1"], "expect": ["certificate"]}
+{"id": "s06", "question": "invoice payment terms", "gold": ["purchasing.md#3"], "expect": ["30 days net"]}
+{"id": "s07", "question": "per diem abroad", "gold": ["travel-policy.md#2"], "expect": ["52 euros"]}
+{"id": "s08", "question": "vacation days", "gold": ["leave-policy.md#0"], "expect": ["30 days"]}
