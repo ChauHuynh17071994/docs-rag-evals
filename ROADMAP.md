@@ -15,7 +15,7 @@ Progress tracker for this project. Each item is one small, reviewable commit.
 - [x] Unit tests for chunking, BM25, pipeline, API
 - [x] Eval dataset incl. unanswerable questions
 - [x] Eval runner: recall@k, MRR, citation validity, refusal accuracy, keyword match
-- [ ] CI: lint + tests + eval quality gate
+- [x] CI: lint + tests + eval quality gate
 - [ ] README with architecture, metrics, how to run
 
 ## v0.2 — retrieval quality
