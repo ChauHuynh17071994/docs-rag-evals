@@ -16,6 +16,7 @@ from rag.index import RETRIEVERS, Index
 from rag.llm import get_llm
 from rag.pipeline import RagPipeline
 from rag.rerank import LexicalReranker
+from rag.rewrite import GlossaryRewriter
 
 from .run_eval import evaluate, load_dataset
 
@@ -23,7 +24,12 @@ COLUMNS = ["recall@k", "mrr", "answer_match", "cites_gold", "refusal_acc", "avg_
 
 
 def configs() -> list[dict]:
-    return [{"retriever": r, "rerank": rerank} for r in RETRIEVERS for rerank in (False, True)]
+    return [
+        {"retriever": r, "rerank": rerank, "rewrite": rewrite}
+        for r in RETRIEVERS
+        for rewrite in (False, True)
+        for rerank in (False, True)
+    ]
 
 
 def label(config: dict) -> str:
@@ -37,7 +43,10 @@ def compare(docs: str, dataset: str, backend: str | None = None, k: int = 4) -> 
     for config in configs():
         index_opts = {key: config[key] for key in ("retriever",) if key in config}
         reranker = LexicalReranker() if config.get("rerank") else None
-        pipeline = RagPipeline(Index.from_folder(docs, **index_opts), llm, k=k, reranker=reranker)
+        rewriter = GlossaryRewriter() if config.get("rewrite") else None
+        pipeline = RagPipeline(
+            Index.from_folder(docs, **index_opts), llm, k=k, reranker=reranker, rewriter=rewriter
+        )
         results.append((label(config), evaluate(pipeline, data)["metrics"]))
     return results
 
