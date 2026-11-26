@@ -107,3 +107,10 @@ def test_dense_similarity_can_unlock_an_answer_bm25_would_refuse():
     assert lexical.refused
     assert not hybrid.refused and hybrid.citations == ["it-security.md#0"]
     assert hybrid.meta["retriever"] == "hybrid"
+
+
+def test_extractive_backend_matches_plural_forms():
+    from rag.chunking import Chunk
+
+    chunk = Chunk("it.md#0", "it.md", "IT", "Passwords must be at least 14 characters long.")
+    assert "14 characters" in ExtractiveLLM().answer("minimum password length", [chunk])
