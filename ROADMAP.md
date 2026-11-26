@@ -26,9 +26,9 @@ Progress tracker for this project. Each item is one small, reviewable commit.
 - [x] Reranking step and before/after eval comparison
   - [x] Lexical coverage/proximity reranker behind `--rerank`
   - [x] Before/after eval table in README
-- [ ] Query rewriting for short queries
+- [x] Query rewriting for short queries
   - [x] Short keyword-style questions in the eval set
-  - [ ] Rule-based rewriter (offline) + optional Claude rewriter
+  - [x] Rule-based rewriter (offline) + optional Claude rewriter
 - [ ] Per-question eval report as Markdown artifact in CI
   - [ ] Markdown report writer
   - [ ] Upload report and post it to the CI job summary

@@ -12,9 +12,10 @@ Most RAG demos stop at "it answered my question". This project treats a RAG syst
 
 - **Cited answers.** The model may only cite chunk ids it was given (`[travel-policy.md#2]`). Citations are parsed and validated; anything pointing outside the retrieved context is flagged as `invalid_citations`.
 - **Refusals.** If retrieval evidence is weak, the pipeline answers *"I don't know based on the available documents."* without spending an LLM call.
+- **Query rewriting and reranking.** Short keyword queries are expanded from a glossary (or by Claude) before retrieval, and a second-stage reranker reorders a candidate pool. Both are flags, both are measured.
 - **Pluggable backends.** `claude` (Anthropic API) for real answers, `extractive` (offline, deterministic) for tests and CI.
 - **Dependency-free retrieval.** Markdown-aware chunking, an Okapi BM25 implementation written from scratch, an offline character n-gram hashing embedder, and hybrid search with reciprocal rank fusion (`--retriever bm25|dense|hybrid`).
-- **Evaluation suite.** 25 questions, including unanswerable hard negatives, scored on six metrics with a quality gate in CI.
+- **Evaluation suite.** 33 questions, including short keyword queries and unanswerable hard negatives, scored on six metrics with a quality gate in CI.
 - **API + CLI.** FastAPI service (`/ask`, `/health`) and a `rag` command line tool.
 
 ## Architecture
@@ -24,7 +25,8 @@ flowchart LR
     D[Markdown docs] --> C[Chunker<br/>heading-scoped, stable ids]
     C --> I[BM25 index]
     C --> E[Dense index<br/>hashing embeddings]
-    Q[Question] --> R[Retrieve top-k<br/>bm25 / dense / hybrid RRF]
+    Q[Question] --> W[Optional rewrite<br/>short queries]
+    W --> R[Retrieve top-k<br/>bm25 / dense / hybrid RRF]
     I --> R
     E --> R
     R -->|top score below threshold| X[Refuse]
@@ -47,35 +49,52 @@ Run with `python -m rag.cli eval`. Metrics:
 | cites_gold | answered questions cite the correct chunk |
 | refusal_acc | refuses unanswerable questions, answers answerable ones |
 
-### Retriever and reranker comparison
+### Retrieval configuration comparison
 
-Measured with `python -m evals.compare -k 4` and `-k 1` (offline `extractive` backend, 25 questions; latency is the in-process pipeline time on a small cloud container, no LLM call).
+Measured with `python -m evals.compare -k 4` and `-k 1`: offline `extractive` backend, 33 questions (21 full questions, 8 short keyword queries such as "pw length" or "per diem abroad", 4 unanswerable). Latency is in-process pipeline time on a small cloud container, without an LLM call.
 
 k = 4:
 
 | config | recall@k | mrr | answer_match | cites_gold | refusal_acc | avg_latency_ms |
 |---|---|---|---|---|---|---|
-| bm25 | 0.952 | 0.929 | 0.810 | 0.950 | 0.880 | 0.11 |
-| bm25 + rerank | 0.952 | 0.952 | 0.810 | 1.000 | 0.880 | 0.17 |
-| dense | 1.000 | 1.000 | 0.857 | 1.000 | 0.920 | 2.04 |
-| dense + rerank | 1.000 | 1.000 | 0.857 | 1.000 | 0.920 | 2.29 |
-| hybrid | 1.000 | 1.000 | 0.857 | 1.000 | 0.920 | 2.91 |
-| hybrid + rerank | 1.000 | 1.000 | 0.857 | 1.000 | 0.920 | 3.61 |
+| bm25 | 0.897 | 0.856 | 0.690 | 0.920 | 0.818 | 0.09 |
+| bm25 + rerank | 0.897 | 0.874 | 0.690 | 0.960 | 0.818 | 0.17 |
+| bm25 + rewrite | 0.931 | 0.914 | 0.793 | 0.963 | 0.879 | 0.10 |
+| bm25 + rerank + rewrite | 0.931 | 0.931 | 0.793 | 1.000 | 0.879 | 0.17 |
+| dense | 0.966 | 0.925 | 0.759 | 0.963 | 0.879 | 2.03 |
+| dense + rerank | 0.966 | 0.943 | 0.759 | 0.963 | 0.879 | 2.01 |
+| dense + rewrite | 1.000 | 0.983 | 0.828 | 1.000 | 0.909 | 1.79 |
+| dense + rerank + rewrite | 1.000 | 1.000 | 0.828 | 1.000 | 0.909 | 2.06 |
+| hybrid | 0.966 | 0.925 | 0.759 | 0.963 | 0.879 | 1.85 |
+| hybrid + rerank | 0.966 | 0.943 | 0.759 | 0.963 | 0.879 | 2.02 |
+| hybrid + rewrite | 1.000 | 0.983 | 0.828 | 1.000 | 0.909 | 1.90 |
+| hybrid + rerank + rewrite | 1.000 | 1.000 | 0.828 | 1.000 | 0.909 | 2.08 |
 
 k = 1 (only the top chunk reaches the generator, so ranking quality matters most):
 
 | config | recall@k | mrr | answer_match | cites_gold | refusal_acc | avg_latency_ms |
 |---|---|---|---|---|---|---|
-| bm25 | 0.905 | 0.905 | 0.810 | 0.950 | 0.880 | 0.09 |
-| bm25 + rerank | 0.952 | 0.952 | 0.810 | 1.000 | 0.880 | 0.15 |
-| dense | 1.000 | 1.000 | 0.857 | 1.000 | 0.920 | 1.78 |
-| dense + rerank | 1.000 | 1.000 | 0.857 | 1.000 | 0.920 | 2.07 |
-| hybrid | 1.000 | 1.000 | 0.857 | 1.000 | 0.920 | 1.81 |
-| hybrid + rerank | 1.000 | 1.000 | 0.857 | 1.000 | 0.920 | 1.96 |
+| bm25 | 0.828 | 0.828 | 0.690 | 0.920 | 0.818 | 0.07 |
+| bm25 + rerank | 0.862 | 0.862 | 0.690 | 0.960 | 0.818 | 0.13 |
+| bm25 + rewrite | 0.897 | 0.897 | 0.793 | 0.963 | 0.879 | 0.07 |
+| bm25 + rerank + rewrite | 0.931 | 0.931 | 0.793 | 1.000 | 0.879 | 0.15 |
+| dense | 0.897 | 0.897 | 0.724 | 0.926 | 0.879 | 1.74 |
+| dense + rerank | 0.931 | 0.931 | 0.759 | 0.963 | 0.879 | 1.90 |
+| dense + rewrite | 0.966 | 0.966 | 0.793 | 0.964 | 0.909 | 1.68 |
+| dense + rerank + rewrite | 1.000 | 1.000 | 0.828 | 1.000 | 0.909 | 2.02 |
+| hybrid | 0.897 | 0.897 | 0.724 | 0.926 | 0.879 | 1.71 |
+| hybrid + rerank | 0.931 | 0.931 | 0.759 | 0.963 | 0.879 | 1.96 |
+| hybrid + rewrite | 0.966 | 0.966 | 0.793 | 0.964 | 0.909 | 1.81 |
+| hybrid + rerank + rewrite | 1.000 | 1.000 | 0.828 | 1.000 | 0.909 | 1.96 |
 
-The BM25 miss is q11 ("minimum password length"): the document says "Passwords must be at least 14 characters long", and exact-token BM25 does not match "password" to "passwords". Character n-gram embeddings close that gap. The dense refusal threshold (`--min-similarity 0.22`) was calibrated on this same small set, so treat these numbers as indicative, not as a held-out result. The two remaining refusal errors (u02, u04) come from BM25 matching the company name in the corpus intro.
+What the numbers show:
 
-The lexical reranker (`--rerank`) rescoring a 20-chunk pool by query-term coverage, term proximity and heading match lifts BM25 at k = 1 (recall 0.905 → 0.952, cites_gold 0.950 → 1.000) for under 0.1 ms. Dense and hybrid retrieval already rank every gold chunk first on this set, so the reranker has no headroom there; a harder eval set is needed to separate them.
+- **Dense / hybrid vs BM25.** BM25 matches exact tokens, so "minimum password length" misses "Passwords must be at least 14 characters long". Character n-gram embeddings close that gap (recall@4 0.897 → 0.966).
+- **Reranking** (`--rerank`) rescores a 20-chunk pool by query-term coverage, term proximity and heading match. It mainly fixes ordering: at k = 1 it adds 3–4 points of recall in every configuration, for under 0.4 ms.
+- **Query rewriting** (`--rewrite glossary`) expands queries of three terms or fewer with a small HR/IT glossary ("wfh" → "work remotely"). It gives the largest gain on short queries and cuts wrong refusals of answerable ones (refusal_acc 0.818 → 0.879 with BM25), because the expanded query carries enough evidence to pass the threshold.
+- **Best offline config:** `--retriever hybrid --rerank --rewrite glossary` reaches recall@1 = 1.000 and cites_gold = 1.000 on this set.
+
+Caveats: the eval set is small, and the glossary, the dense refusal threshold (`--min-similarity 0.22`) and the short queries were written by the same person, so these are indicative results, not held-out ones. The remaining refusal errors (u02, u04) come from BM25 matching the company name in the corpus intro.
 
 CI fails if recall@k, MRR, citation validity or refusal accuracy drop below their thresholds (`evals/run_eval.py`).
 
@@ -100,7 +119,7 @@ python -m rag.cli --retriever hybrid ask "What is the minimum password length?"
 # Evaluate
 python -m rag.cli eval
 python -m evals.compare                     # retriever x reranker table
-python -m rag.cli --retriever hybrid --rerank eval
+python -m rag.cli --retriever hybrid --rerank --rewrite glossary eval
 RAG_BACKEND=claude python -m rag.cli eval   # compare backends
 
 # API
@@ -118,12 +137,13 @@ rag/
   embeddings.py hashing embedder, dense index, optional sentence-transformers
   index.py      bm25 / dense / hybrid (RRF) search + JSON persistence
   rerank.py     second-stage lexical reranker
+  rewrite.py    glossary / Claude query rewriting for short queries
   llm.py        LLM protocol, Claude and extractive backends, prompt
   pipeline.py   retrieve -> refuse -> generate -> validate citations
   api.py        FastAPI service
   cli.py        ingest / ask / eval
 evals/
-  dataset.jsonl 25 questions incl. unanswerable ones
+  dataset.jsonl 33 questions incl. short and unanswerable ones
   run_eval.py   metrics, report, CI gate
   compare.py    retriever comparison table
 data/docs/      sample policy documents (fictional company)
