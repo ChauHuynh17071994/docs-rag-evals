@@ -30,7 +30,7 @@ Progress tracker for this project. Each item is one small, reviewable commit.
   - [x] Short keyword-style questions in the eval set
   - [x] Rule-based rewriter (offline) + optional Claude rewriter
 - [ ] Per-question eval report as Markdown artifact in CI
-  - [ ] Markdown report writer
+  - [x] Markdown report writer
   - [ ] Upload report and post it to the CI job summary
 
 ## v0.3 — production touches

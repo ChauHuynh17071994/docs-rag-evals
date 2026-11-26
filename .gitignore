@@ -9,3 +9,4 @@ build/
 dist/
 index.json
 eval_report.json
+eval_report.md

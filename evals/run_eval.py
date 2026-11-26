@@ -76,9 +76,15 @@ def evaluate(pipeline: RagPipeline, dataset: list[dict]) -> dict:
     return {"backend": pipeline.llm.name, "k": pipeline.k, "metrics": metrics, "rows": rows}
 
 
-def run(pipeline: RagPipeline, dataset: str, report: str, gate: bool = False) -> int:
+def run(
+    pipeline: RagPipeline, dataset: str, report: str, gate: bool = False, markdown: str | None = None
+) -> int:
     result = evaluate(pipeline, load_dataset(dataset))
     Path(report).write_text(json.dumps(result, indent=2), encoding="utf-8")
+    if markdown:
+        from .report import to_markdown  # local import: report imports THRESHOLDS from here
+
+        Path(markdown).write_text(to_markdown(result), encoding="utf-8")
 
     metrics = result["metrics"]
     print(f"backend={result['backend']} k={result['k']} n={metrics['n']}")
