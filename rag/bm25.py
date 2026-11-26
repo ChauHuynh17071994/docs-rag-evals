@@ -20,6 +20,15 @@ def tokenize(text: str) -> list[str]:
     return [t for t in TOKEN.findall(text.lower()) if len(t) > 1 and t not in STOPWORDS]
 
 
+def stem(token: str) -> str:
+    """Very light stemming: drop a trailing plural "s" ("passwords" -> "password")."""
+    return token[:-1] if len(token) > 3 and token.endswith("s") and not token.endswith("ss") else token
+
+
+def stems(text: str) -> list[str]:
+    return [stem(t) for t in tokenize(text)]
+
+
 class BM25:
     def __init__(self, documents: list[str], k1: float = 1.5, b: float = 0.75) -> None:
         self.k1 = k1

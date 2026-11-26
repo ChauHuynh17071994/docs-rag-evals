@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 
 from .index import Hit, Index
 from .llm import LLM, REFUSAL
+from .rerank import Reranker
 
 CITATION = re.compile(r"\[([^\[\]]+?\.md#\d+)\]")
 
@@ -39,15 +40,22 @@ class RagPipeline:
         k: int = 4,
         min_score: float = 1.5,
         min_similarity: float = 0.22,
+        reranker: Reranker | None = None,
+        candidates: int = 20,
     ) -> None:
         self.index = index
         self.llm = llm
         self.k = k
         self.min_score = min_score
         self.min_similarity = min_similarity
+        self.reranker = reranker
+        self.candidates = candidates
 
     def retrieve(self, question: str) -> list[Hit]:
-        return self.index.search(question, self.k)
+        if self.reranker is None:
+            return self.index.search(question, self.k)
+        pool = self.index.search(question, max(self.k, self.candidates))
+        return self.reranker.rerank(question, pool)[: self.k]
 
     def ask(self, question: str) -> Answer:
         start = time.perf_counter()
@@ -55,7 +63,11 @@ class RagPipeline:
         top = max((h.score for h in hits), default=0.0)
         top_dense = max((h.dense for h in hits), default=0.0)
         retrieved = [h.chunk.id for h in hits]
-        meta = {"retriever": self.index.retriever, "top_dense": round(top_dense, 3)}
+        meta = {
+            "retriever": self.index.retriever,
+            "reranker": self.reranker.name if self.reranker else None,
+            "top_dense": round(top_dense, 3),
+        }
 
         # Weak evidence from every retriever: refuse without spending an LLM call.
         if top < self.min_score and top_dense < self.min_similarity:

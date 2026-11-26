@@ -11,7 +11,7 @@ import os
 import re
 from typing import Protocol
 
-from .bm25 import tokenize
+from .bm25 import stems
 from .chunking import Chunk
 
 SYSTEM_PROMPT = """You answer questions about company policies using ONLY the provided context.
@@ -35,22 +35,17 @@ def format_context(context: list[Chunk]) -> str:
     return "\n\n".join(f"[{c.id}] ({c.title})\n{c.text}" for c in context)
 
 
-def _stems(text: str) -> set[str]:
-    """Tokens with a trailing plural "s" removed, so "passwords" matches "password"."""
-    return {t[:-1] if len(t) > 3 and t.endswith("s") and not t.endswith("ss") else t for t in tokenize(text)}
-
-
 class ExtractiveLLM:
     """Offline baseline: returns the context sentence with the most query-term overlap."""
 
     name = "extractive"
 
     def answer(self, question: str, context: list[Chunk]) -> str:
-        terms = _stems(question)
+        terms = set(stems(question))
         best: tuple[int, str, str] | None = None
         for chunk in context:
             for sentence in re.split(r"(?<=[.!?])\s+", chunk.text):
-                overlap = len(terms & _stems(sentence))
+                overlap = len(terms & set(stems(sentence)))
                 if overlap and (best is None or overlap > best[0]):
                     best = (overlap, sentence.strip(), chunk.id)
         if best is None:
