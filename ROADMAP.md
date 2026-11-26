@@ -29,9 +29,9 @@ Progress tracker for this project. Each item is one small, reviewable commit.
 - [x] Query rewriting for short queries
   - [x] Short keyword-style questions in the eval set
   - [x] Rule-based rewriter (offline) + optional Claude rewriter
-- [ ] Per-question eval report as Markdown artifact in CI
+- [x] Per-question eval report as Markdown artifact in CI
   - [x] Markdown report writer
-  - [ ] Upload report and post it to the CI job summary
+  - [x] Upload report and post it to the CI job summary
 
 ## v0.3 — production touches
 - [ ] Dockerfile + docker-compose

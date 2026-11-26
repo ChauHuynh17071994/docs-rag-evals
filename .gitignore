@@ -10,3 +10,4 @@ dist/
 index.json
 eval_report.json
 eval_report.md
+eval_compare.md

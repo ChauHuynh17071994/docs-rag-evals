@@ -21,10 +21,24 @@ jobs:
       - name: Unit tests
         run: pytest -q
       - name: Eval quality gate (offline backend)
-        run: python -m rag.cli eval --gate
-      - name: Upload eval report
+        run: python -m rag.cli eval --gate --markdown eval_report.md
+      - name: Retrieval configuration comparison
+        if: always()
+        run: python -m evals.compare --out eval_compare.md
+      - name: Publish reports to job summary
+        if: always()
+        run: |
+          if [ -f eval_report.md ]; then cat eval_report.md >> "$GITHUB_STEP_SUMMARY"; fi
+          if [ -f eval_compare.md ]; then
+            printf '\n## Retrieval configurations (k=4)\n\n' >> "$GITHUB_STEP_SUMMARY"
+            cat eval_compare.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Upload eval reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: eval-report
-          path: eval_report.json
+          path: |
+            eval_report.json
+            eval_report.md
+            eval_compare.md

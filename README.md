@@ -96,7 +96,7 @@ What the numbers show:
 
 Caveats: the eval set is small, and the glossary, the dense refusal threshold (`--min-similarity 0.22`) and the short queries were written by the same person, so these are indicative results, not held-out ones. The remaining refusal errors (u02, u04) come from BM25 matching the company name in the corpus intro.
 
-CI fails if recall@k, MRR, citation validity or refusal accuracy drop below their thresholds (`evals/run_eval.py`).
+CI fails if recall@k, MRR, citation validity or refusal accuracy drop below their thresholds (`evals/run_eval.py`). Every run posts the per-question report (`--markdown`) and the configuration comparison table to the GitHub Actions job summary and uploads them as the `eval-report` artifact.
 
 ## Quickstart
 
