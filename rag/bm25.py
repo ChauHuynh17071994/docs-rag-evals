@@ -17,7 +17,7 @@ STOPWORDS = frozenset(
 
 
 def tokenize(text: str) -> list[str]:
-    return [t for t in TOKEN.findall(text.lower()) if t not in STOPWORDS]
+    return [t for t in TOKEN.findall(text.lower()) if len(t) > 1 and t not in STOPWORDS]
 
 
 class BM25:
