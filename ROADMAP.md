@@ -7,8 +7,8 @@ Progress tracker for this project. Each item is one small, reviewable commit.
 - [x] Markdown-aware chunking with stable chunk ids
 - [x] BM25 retriever (no external dependencies)
 - [x] Index build + JSON persistence
-- [ ] LLM interface with offline extractive backend
-- [ ] Claude backend with citation-only prompt
+- [x] LLM interface with offline extractive backend
+- [x] Claude backend with citation-only prompt
 - [ ] Answer pipeline: retrieve → threshold refusal → generate → validate citations
 - [ ] CLI: ingest / ask / eval
 - [ ] FastAPI service (/health, /ask)
