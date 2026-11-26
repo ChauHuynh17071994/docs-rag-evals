@@ -13,7 +13,7 @@ Most RAG demos stop at "it answered my question". This project treats a RAG syst
 - **Cited answers.** The model may only cite chunk ids it was given (`[travel-policy.md#2]`). Citations are parsed and validated; anything pointing outside the retrieved context is flagged as `invalid_citations`.
 - **Refusals.** If retrieval evidence is weak, the pipeline answers *"I don't know based on the available documents."* without spending an LLM call.
 - **Pluggable backends.** `claude` (Anthropic API) for real answers, `extractive` (offline, deterministic) for tests and CI.
-- **Dependency-free retrieval.** Markdown-aware chunking and an Okapi BM25 implementation written from scratch.
+- **Dependency-free retrieval.** Markdown-aware chunking, an Okapi BM25 implementation written from scratch, an offline character n-gram hashing embedder, and hybrid search with reciprocal rank fusion (`--retriever bm25|dense|hybrid`).
 - **Evaluation suite.** 25 questions, including unanswerable hard negatives, scored on six metrics with a quality gate in CI.
 - **API + CLI.** FastAPI service (`/ask`, `/health`) and a `rag` command line tool.
 
@@ -23,8 +23,10 @@ Most RAG demos stop at "it answered my question". This project treats a RAG syst
 flowchart LR
     D[Markdown docs] --> C[Chunker<br/>heading-scoped, stable ids]
     C --> I[BM25 index]
-    Q[Question] --> R[Retrieve top-k]
+    C --> E[Dense index<br/>hashing embeddings]
+    Q[Question] --> R[Retrieve top-k<br/>bm25 / dense / hybrid RRF]
     I --> R
+    E --> R
     R -->|top score below threshold| X[Refuse]
     R --> L[LLM backend<br/>Claude or extractive]
     L --> V[Citation validator]
@@ -33,18 +35,30 @@ flowchart LR
 
 ## Evaluation
 
-Run with `python -m rag.cli eval`. Current results with the offline `extractive` backend (k = 4):
+Run with `python -m rag.cli eval`. Metrics:
 
-| Metric | Score | What it measures |
-|---|---|---|
-| recall@k | 0.952 | gold chunk is in the retrieved set |
-| MRR | 0.929 | how high the gold chunk ranks |
-| answer_match | 0.762 | answer contains the expected key facts |
-| citation_valid | 1.000 | answered questions cite only retrieved chunks |
-| cites_gold | 0.950 | answered questions cite the correct chunk |
-| refusal_acc | 0.880 | refuses unanswerable questions, answers answerable ones |
+| Metric | What it measures |
+|---|---|
+| recall@k | gold chunk is in the retrieved set |
+| MRR | how high the gold chunk ranks |
+| answer_match | answer contains the expected key facts |
+| citation_valid | answered questions cite only retrieved chunks (1.000 in every config below) |
+| cites_gold | answered questions cite the correct chunk |
+| refusal_acc | refuses unanswerable questions, answers answerable ones |
 
-CI fails if recall@k, MRR, citation validity or refusal accuracy drop below their thresholds (`evals/run_eval.py`). Known weak spot: q11 ("minimum password length") misses because the document says "at least 14 characters long", a vocabulary gap that lexical retrieval cannot bridge. Hybrid retrieval is on the [roadmap](ROADMAP.md).
+### Retriever comparison
+
+Measured with `python -m evals.compare` (offline `extractive` backend, k = 4, 25 questions, latency on a laptop-class CPU):
+
+| config | recall@k | mrr | answer_match | cites_gold | refusal_acc | avg_latency_ms |
+|---|---|---|---|---|---|---|
+| bm25 | 0.952 | 0.929 | 0.810 | 0.950 | 0.880 | 0.10 |
+| dense | 1.000 | 1.000 | 0.857 | 1.000 | 0.920 | 1.85 |
+| hybrid | 1.000 | 1.000 | 0.857 | 1.000 | 0.920 | 1.97 |
+
+The BM25 miss is q11 ("minimum password length"): the document says "Passwords must be at least 14 characters long", and exact-token BM25 does not match "password" to "passwords". Character n-gram embeddings close that gap. The dense refusal threshold (`--min-similarity 0.22`) was calibrated on this same small set, so treat these numbers as indicative, not as a held-out result. The two remaining refusal errors (u02, u04) come from BM25 matching the company name in the corpus intro.
+
+CI fails if recall@k, MRR, citation validity or refusal accuracy drop below their thresholds (`evals/run_eval.py`).
 
 ## Quickstart
 
@@ -61,8 +75,12 @@ python -m rag.cli ask "What is the daily allowance for trips abroad?"
 cp .env.example .env   # add ANTHROPIC_API_KEY
 RAG_BACKEND=claude python -m rag.cli ask "Can drivers work remotely?"
 
+# Hybrid retrieval (BM25 + embeddings, reciprocal rank fusion)
+python -m rag.cli --retriever hybrid ask "What is the minimum password length?"
+
 # Evaluate
 python -m rag.cli eval
+python -m evals.compare                     # bm25 vs dense vs hybrid table
 RAG_BACKEND=claude python -m rag.cli eval   # compare backends
 
 # API
@@ -77,7 +95,8 @@ curl -X POST localhost:8000/ask -H "Content-Type: application/json" \
 rag/
   chunking.py   heading-scoped Markdown chunking
   bm25.py       Okapi BM25 retriever
-  index.py      index build + JSON persistence
+  embeddings.py hashing embedder, dense index, optional sentence-transformers
+  index.py      bm25 / dense / hybrid (RRF) search + JSON persistence
   llm.py        LLM protocol, Claude and extractive backends, prompt
   pipeline.py   retrieve -> refuse -> generate -> validate citations
   api.py        FastAPI service
@@ -85,6 +104,7 @@ rag/
 evals/
   dataset.jsonl 25 questions incl. unanswerable ones
   run_eval.py   metrics, report, CI gate
+  compare.py    retriever comparison table
 data/docs/      sample policy documents (fictional company)
 tests/          unit and API tests
 ```

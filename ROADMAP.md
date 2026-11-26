@@ -19,10 +19,10 @@ Progress tracker for this project. Each item is one small, reviewable commit.
 - [x] README with architecture, metrics, how to run
 
 ## v0.2 — retrieval quality
-- [ ] Hybrid retrieval (BM25 + embeddings) behind a flag
+- [x] Hybrid retrieval (BM25 + embeddings) behind a flag
   - [x] Offline hashing embedder + dense vector search
   - [x] Reciprocal rank fusion and `--retriever bm25|dense|hybrid` flag
-  - [ ] Config comparison script and measured results in README
+  - [x] Config comparison script and measured results in README
 - [ ] Reranking step and before/after eval comparison
   - [ ] Lexical coverage/proximity reranker behind `--rerank`
   - [ ] Before/after eval table in README
