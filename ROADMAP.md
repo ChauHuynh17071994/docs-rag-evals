@@ -16,7 +16,7 @@ Progress tracker for this project. Each item is one small, reviewable commit.
 - [x] Eval dataset incl. unanswerable questions
 - [x] Eval runner: recall@k, MRR, citation validity, refusal accuracy, keyword match
 - [x] CI: lint + tests + eval quality gate
-- [ ] README with architecture, metrics, how to run
+- [x] README with architecture, metrics, how to run
 
 ## v0.2 — retrieval quality
 - [ ] Hybrid retrieval (BM25 + embeddings) behind a flag
