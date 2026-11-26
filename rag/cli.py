@@ -4,17 +4,25 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from dataclasses import asdict
 
-from .index import Index
+from .index import RETRIEVERS, Index
 from .llm import get_llm
 from .pipeline import RagPipeline
 
 
 def _pipeline(args: argparse.Namespace) -> RagPipeline:
-    index = Index.load(args.index) if args.index else Index.from_folder(args.docs)
-    return RagPipeline(index, get_llm(args.backend), k=args.k, min_score=args.min_score)
+    opts = {"retriever": args.retriever}
+    index = Index.load(args.index, **opts) if args.index else Index.from_folder(args.docs, **opts)
+    return RagPipeline(
+        index,
+        get_llm(args.backend),
+        k=args.k,
+        min_score=args.min_score,
+        min_similarity=args.min_similarity,
+    )
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -23,7 +31,16 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--index", help="prebuilt index.json (skips chunking)")
     parser.add_argument("--backend", choices=["extractive", "claude"], help="LLM backend")
     parser.add_argument("-k", type=int, default=4, help="chunks to retrieve")
-    parser.add_argument("--min-score", type=float, default=1.5, help="refusal threshold")
+    parser.add_argument(
+        "--retriever",
+        choices=RETRIEVERS,
+        default=os.environ.get("RAG_RETRIEVER", "bm25"),
+        help="bm25 (lexical), dense (hashing embeddings) or hybrid (reciprocal rank fusion)",
+    )
+    parser.add_argument("--min-score", type=float, default=1.5, help="BM25 refusal threshold")
+    parser.add_argument(
+        "--min-similarity", type=float, default=0.22, help="dense cosine refusal threshold"
+    )
     sub = parser.add_subparsers(dest="command", required=True)
 
     ingest = sub.add_parser("ingest", help="chunk documents and write index.json")

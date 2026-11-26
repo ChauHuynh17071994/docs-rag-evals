@@ -36,13 +36,19 @@ class AskResponse(BaseModel):
 @lru_cache(maxsize=1)
 def get_pipeline() -> RagPipeline:
     docs = os.environ.get("RAG_DOCS", "data/docs")
-    return RagPipeline(Index.from_folder(docs), get_llm())
+    retriever = os.environ.get("RAG_RETRIEVER", "bm25")
+    return RagPipeline(Index.from_folder(docs, retriever=retriever), get_llm())
 
 
 @app.get("/health")
 def health() -> dict:
     pipeline = get_pipeline()
-    return {"status": "ok", "chunks": len(pipeline.index.chunks), "backend": pipeline.llm.name}
+    return {
+        "status": "ok",
+        "chunks": len(pipeline.index.chunks),
+        "backend": pipeline.llm.name,
+        "retriever": pipeline.index.retriever,
+    }
 
 
 @app.post("/ask", response_model=AskResponse)

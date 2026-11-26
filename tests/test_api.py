@@ -20,3 +20,7 @@ def test_ask_returns_grounded_answer():
 
 def test_ask_validates_input():
     assert client.post("/ask", json={"question": ""}).status_code == 422
+
+
+def test_health_reports_retriever():
+    assert client.get("/health").json()["retriever"] == "bm25"
