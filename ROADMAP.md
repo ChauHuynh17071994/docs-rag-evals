@@ -11,7 +11,7 @@ Progress tracker for this project. Each item is one small, reviewable commit.
 - [x] Claude backend with citation-only prompt
 - [x] Answer pipeline: retrieve → threshold refusal → generate → validate citations
 - [x] CLI: ingest / ask / eval
-- [ ] FastAPI service (/health, /ask)
+- [x] FastAPI service (/health, /ask)
 - [ ] Unit tests for chunking, BM25, pipeline, API
 - [ ] Eval dataset incl. unanswerable questions
 - [ ] Eval runner: recall@k, MRR, citation validity, refusal accuracy, keyword match
