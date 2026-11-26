@@ -1,5 +1,5 @@
 from rag.bm25 import BM25, tokenize
-from rag.chunking import chunk_markdown, load_corpus
+from rag.chunking import chunk_markdown
 from rag.index import Index
 from rag.llm import REFUSAL, ExtractiveLLM
 from rag.pipeline import RagPipeline
