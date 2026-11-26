@@ -4,7 +4,7 @@ Progress tracker for this project. Each item is one small, reviewable commit.
 
 ## v0.1 — core pipeline
 - [x] Project scaffold, license, sample corpus
-- [ ] Markdown-aware chunking with stable chunk ids
+- [x] Markdown-aware chunking with stable chunk ids
 - [ ] BM25 retriever (no external dependencies)
 - [ ] Index build + JSON persistence
 - [ ] LLM interface with offline extractive backend
