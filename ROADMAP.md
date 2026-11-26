@@ -12,7 +12,7 @@ Progress tracker for this project. Each item is one small, reviewable commit.
 - [x] Answer pipeline: retrieve → threshold refusal → generate → validate citations
 - [x] CLI: ingest / ask / eval
 - [x] FastAPI service (/health, /ask)
-- [ ] Unit tests for chunking, BM25, pipeline, API
+- [x] Unit tests for chunking, BM25, pipeline, API
 - [ ] Eval dataset incl. unanswerable questions
 - [ ] Eval runner: recall@k, MRR, citation validity, refusal accuracy, keyword match
 - [ ] CI: lint + tests + eval quality gate
