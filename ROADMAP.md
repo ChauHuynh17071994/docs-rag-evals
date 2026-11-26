@@ -9,7 +9,7 @@ Progress tracker for this project. Each item is one small, reviewable commit.
 - [x] Index build + JSON persistence
 - [x] LLM interface with offline extractive backend
 - [x] Claude backend with citation-only prompt
-- [ ] Answer pipeline: retrieve → threshold refusal → generate → validate citations
+- [x] Answer pipeline: retrieve → threshold refusal → generate → validate citations
 - [ ] CLI: ingest / ask / eval
 - [ ] FastAPI service (/health, /ask)
 - [ ] Unit tests for chunking, BM25, pipeline, API
