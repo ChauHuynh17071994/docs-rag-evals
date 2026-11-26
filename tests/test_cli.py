@@ -15,3 +15,8 @@ def test_retriever_defaults_to_env(monkeypatch, capsys):
     monkeypatch.setenv("RAG_RETRIEVER", "dense")
     main(["ask", "--json", "How quickly must a stolen laptop be reported?"])
     assert json.loads(capsys.readouterr().out)["meta"]["retriever"] == "dense"
+
+
+def test_rerank_flag_is_recorded(capsys):
+    main(["--rerank", "ask", "--json", "What is the maximum hotel rate in a capital city?"])
+    assert json.loads(capsys.readouterr().out)["meta"]["reranker"] == "lexical"

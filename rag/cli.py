@@ -11,6 +11,7 @@ from dataclasses import asdict
 from .index import RETRIEVERS, Index
 from .llm import get_llm
 from .pipeline import RagPipeline
+from .rerank import LexicalReranker
 
 
 def _pipeline(args: argparse.Namespace) -> RagPipeline:
@@ -22,6 +23,7 @@ def _pipeline(args: argparse.Namespace) -> RagPipeline:
         k=args.k,
         min_score=args.min_score,
         min_similarity=args.min_similarity,
+        reranker=LexicalReranker() if args.rerank else None,
     )
 
 
@@ -36,6 +38,12 @@ def main(argv: list[str] | None = None) -> int:
         choices=RETRIEVERS,
         default=os.environ.get("RAG_RETRIEVER", "bm25"),
         help="bm25 (lexical), dense (hashing embeddings) or hybrid (reciprocal rank fusion)",
+    )
+    parser.add_argument(
+        "--rerank",
+        action="store_true",
+        default=os.environ.get("RAG_RERANK", "") == "1",
+        help="rerank a 20-chunk candidate pool before keeping the top k",
     )
     parser.add_argument("--min-score", type=float, default=1.5, help="BM25 refusal threshold")
     parser.add_argument(

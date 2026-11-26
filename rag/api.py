@@ -13,6 +13,7 @@ from . import __version__
 from .index import Index
 from .llm import get_llm
 from .pipeline import RagPipeline
+from .rerank import LexicalReranker
 
 app = FastAPI(title="docs-rag-evals", version=__version__)
 
@@ -37,7 +38,8 @@ class AskResponse(BaseModel):
 def get_pipeline() -> RagPipeline:
     docs = os.environ.get("RAG_DOCS", "data/docs")
     retriever = os.environ.get("RAG_RETRIEVER", "bm25")
-    return RagPipeline(Index.from_folder(docs, retriever=retriever), get_llm())
+    reranker = LexicalReranker() if os.environ.get("RAG_RERANK") == "1" else None
+    return RagPipeline(Index.from_folder(docs, retriever=retriever), get_llm(), reranker=reranker)
 
 
 @app.get("/health")
@@ -48,6 +50,7 @@ def health() -> dict:
         "chunks": len(pipeline.index.chunks),
         "backend": pipeline.llm.name,
         "retriever": pipeline.index.retriever,
+        "reranker": pipeline.reranker.name if pipeline.reranker else None,
     }
 
 
