@@ -1,0 +1,25 @@
+{"id": "q01", "question": "What is the daily allowance for trips abroad?", "gold": ["travel-policy.md#2"], "expect": ["52 euros"]}
+{"id": "q02", "question": "How many days before departure must trips be booked?", "gold": ["travel-policy.md#1"], "expect": ["14 days"]}
+{"id": "q03", "question": "When can business class be used?", "gold": ["travel-policy.md#1"], "expect": ["6 hours"]}
+{"id": "q04", "question": "What is the deadline for submitting expense claims?", "gold": ["travel-policy.md#3"], "expect": ["30 days"]}
+{"id": "q05", "question": "What is the maximum hotel rate in a capital city?", "gold": ["travel-policy.md#4"], "expect": ["160 euros"]}
+{"id": "q06", "question": "How many days per week can employees work remotely?", "gold": ["remote-work.md#0"], "expect": ["3 days"]}
+{"id": "q07", "question": "Are drivers allowed to work remotely?", "gold": ["remote-work.md#0"], "expect": ["not eligible"]}
+{"id": "q08", "question": "What are the core hours for remote employees?", "gold": ["remote-work.md#1"], "expect": ["9:00"]}
+{"id": "q09", "question": "How much can I claim for a home office chair?", "gold": ["remote-work.md#2"], "expect": ["300 euros"]}
+{"id": "q10", "question": "How many days per year can I work from outside Finland?", "gold": ["remote-work.md#3"], "expect": ["20 working days"]}
+{"id": "q11", "question": "What is the minimum password length?", "gold": ["it-security.md#0"], "expect": ["14 characters"]}
+{"id": "q12", "question": "How quickly must a stolen laptop be reported?", "gold": ["it-security.md#1"], "expect": ["2 hours"]}
+{"id": "q13", "question": "How long does IT take to review a software request?", "gold": ["it-security.md#2"], "expect": ["5 working days"]}
+{"id": "q14", "question": "How should I report a phishing email?", "gold": ["it-security.md#3"], "expect": ["Report phishing"]}
+{"id": "q15", "question": "Above what amount is a purchase requisition required?", "gold": ["purchasing.md#0"], "expect": ["500 euros"]}
+{"id": "q16", "question": "Who approves a purchase of 20,000 euros?", "gold": ["purchasing.md#1"], "expect": ["Department heads"]}
+{"id": "q17", "question": "How long does supplier registration take?", "gold": ["purchasing.md#2"], "expect": ["3 working days"]}
+{"id": "q18", "question": "What are the payment terms for supplier invoices?", "gold": ["purchasing.md#3"], "expect": ["30 days net"]}
+{"id": "q19", "question": "How many days of annual leave do full-time employees get?", "gold": ["leave-policy.md#0"], "expect": ["30 days"]}
+{"id": "q20", "question": "When do I need a doctor's certificate for sick leave?", "gold": ["leave-policy.md#1"], "expect": ["3 days"]}
+{"id": "q21", "question": "How early should I tell HR about parental leave?", "gold": ["leave-policy.md#2"], "expect": ["2 months"]}
+{"id": "u01", "question": "What is the CEO's salary?", "gold": [], "expect": []}
+{"id": "u02", "question": "Does the company offer a gym membership?", "gold": [], "expect": []}
+{"id": "u03", "question": "What is the stock option vesting schedule?", "gold": [], "expect": []}
+{"id": "u04", "question": "Which pension provider does Northwind use?", "gold": [], "expect": []}
