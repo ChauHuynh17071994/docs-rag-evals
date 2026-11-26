@@ -6,7 +6,7 @@ Progress tracker for this project. Each item is one small, reviewable commit.
 - [x] Project scaffold, license, sample corpus
 - [x] Markdown-aware chunking with stable chunk ids
 - [x] BM25 retriever (no external dependencies)
-- [ ] Index build + JSON persistence
+- [x] Index build + JSON persistence
 - [ ] LLM interface with offline extractive backend
 - [ ] Claude backend with citation-only prompt
 - [ ] Answer pipeline: retrieve → threshold refusal → generate → validate citations
