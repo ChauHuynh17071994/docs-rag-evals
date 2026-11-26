@@ -12,6 +12,7 @@ from .index import RETRIEVERS, Index
 from .llm import get_llm
 from .pipeline import RagPipeline
 from .rerank import LexicalReranker
+from .rewrite import get_rewriter
 
 
 def _pipeline(args: argparse.Namespace) -> RagPipeline:
@@ -24,6 +25,7 @@ def _pipeline(args: argparse.Namespace) -> RagPipeline:
         min_score=args.min_score,
         min_similarity=args.min_similarity,
         reranker=LexicalReranker() if args.rerank else None,
+        rewriter=get_rewriter(args.rewrite),
     )
 
 
@@ -44,6 +46,12 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         default=os.environ.get("RAG_RERANK", "") == "1",
         help="rerank a 20-chunk candidate pool before keeping the top k",
+    )
+    parser.add_argument(
+        "--rewrite",
+        choices=["none", "glossary", "claude"],
+        default=os.environ.get("RAG_REWRITE", "none"),
+        help="rewrite short queries (<= 3 terms) before retrieval",
     )
     parser.add_argument("--min-score", type=float, default=1.5, help="BM25 refusal threshold")
     parser.add_argument(
