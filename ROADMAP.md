@@ -20,9 +20,18 @@ Progress tracker for this project. Each item is one small, reviewable commit.
 
 ## v0.2 — retrieval quality
 - [ ] Hybrid retrieval (BM25 + embeddings) behind a flag
+  - [ ] Offline hashing embedder + dense vector search
+  - [ ] Reciprocal rank fusion and `--retriever bm25|dense|hybrid` flag
+  - [ ] Config comparison script and measured results in README
 - [ ] Reranking step and before/after eval comparison
+  - [ ] Lexical coverage/proximity reranker behind `--rerank`
+  - [ ] Before/after eval table in README
 - [ ] Query rewriting for short queries
+  - [ ] Short keyword-style questions in the eval set
+  - [ ] Rule-based rewriter (offline) + optional Claude rewriter
 - [ ] Per-question eval report as Markdown artifact in CI
+  - [ ] Markdown report writer
+  - [ ] Upload report and post it to the CI job summary
 
 ## v0.3 — production touches
 - [ ] Dockerfile + docker-compose
