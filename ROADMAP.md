@@ -10,7 +10,7 @@ Progress tracker for this project. Each item is one small, reviewable commit.
 - [x] LLM interface with offline extractive backend
 - [x] Claude backend with citation-only prompt
 - [x] Answer pipeline: retrieve → threshold refusal → generate → validate citations
-- [ ] CLI: ingest / ask / eval
+- [x] CLI: ingest / ask / eval
 - [ ] FastAPI service (/health, /ask)
 - [ ] Unit tests for chunking, BM25, pipeline, API
 - [ ] Eval dataset incl. unanswerable questions
