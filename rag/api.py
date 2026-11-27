@@ -3,20 +3,47 @@
 from __future__ import annotations
 
 import os
+import time
 from dataclasses import asdict
 from functools import lru_cache
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from pydantic import BaseModel, Field
 
 from . import __version__
 from .index import Index
 from .llm import get_llm
+from .observability import configure_logging, request_context
 from .pipeline import RagPipeline
 from .rerank import LexicalReranker
 from .rewrite import get_rewriter
 
+log = configure_logging().getChild("api")
 app = FastAPI(title="docs-rag-evals", version=__version__)
+
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    """Assign a request id (or reuse X-Request-ID), log one JSON line per request."""
+    with request_context(request.headers.get("x-request-id")) as rid:
+        start = time.perf_counter()
+        request.state.request_id = rid
+        try:
+            response = await call_next(request)
+        except Exception:
+            log.exception("request failed", extra={"method": request.method, "path": request.url.path})
+            raise
+        response.headers["X-Request-ID"] = rid
+        log.info(
+            "request",
+            extra={
+                "method": request.method,
+                "path": request.url.path,
+                "status": response.status_code,
+                "duration_ms": round((time.perf_counter() - start) * 1000, 2),
+            },
+        )
+        return response
 
 
 class AskRequest(BaseModel):
@@ -33,6 +60,9 @@ class AskResponse(BaseModel):
     top_score: float
     latency_ms: float
     backend: str
+    request_id: str | None = None
+    timings: dict[str, float] = Field(default_factory=dict)
+    usage: dict[str, float] = Field(default_factory=dict)
 
 
 @lru_cache(maxsize=1)
@@ -67,8 +97,31 @@ def health() -> dict:
 
 
 @app.post("/ask", response_model=AskResponse)
-def ask(request: AskRequest) -> AskResponse:
-    result = get_pipeline().ask(request.question)
+def ask(body: AskRequest, request: Request) -> AskResponse:
+    result = get_pipeline().ask(body.question)
     data = asdict(result)
     data["answer"] = data.pop("text")
-    return AskResponse(grounded=result.grounded, **data)
+    meta = data.pop("meta")
+    data.pop("question")
+    response = AskResponse(
+        grounded=result.grounded,
+        request_id=getattr(request.state, "request_id", None),
+        timings=meta.get("timings", {}),
+        usage=meta.get("usage", {}),
+        **data,
+    )
+    log.info(
+        "answer",
+        extra={
+            "backend": result.backend,
+            "refused": result.refused,
+            "grounded": result.grounded,
+            "citations": len(result.citations),
+            "invalid_citations": len(result.invalid_citations),
+            "top_score": result.top_score,
+            "latency_ms": result.latency_ms,
+            **response.timings,
+            **response.usage,
+        },
+    )
+    return response
