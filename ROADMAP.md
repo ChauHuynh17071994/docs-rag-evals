@@ -42,7 +42,7 @@ Progress tracker for this project. Each item is one small, reviewable commit.
   - [x] Per-stage timings and token/cost accounting in the pipeline
   - [x] Request logging middleware and usage fields in the API
 - [ ] LLM-as-judge faithfulness metric (optional, Claude backend)
-  - [ ] Judge interface with an offline lexical judge and a Claude judge
+  - [x] Judge interface with an offline lexical judge and a Claude judge
   - [ ] `--judge` flag and faithfulness metric in the eval report
 - [ ] Simple web UI
   - [ ] Single-page UI served by the API
