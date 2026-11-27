@@ -35,6 +35,15 @@ Progress tracker for this project. Each item is one small, reviewable commit.
 
 ## v0.3 — production touches
 - [ ] Dockerfile + docker-compose
+  - [ ] Dockerfile with a prebuilt index and non-root user
+  - [ ] docker-compose service with health check and .env support
 - [ ] Structured logging and latency/cost tracking per request
+  - [ ] JSON logger with request ids
+  - [ ] Per-stage timings and token/cost accounting in the pipeline
+  - [ ] Request logging middleware and usage fields in the API
 - [ ] LLM-as-judge faithfulness metric (optional, Claude backend)
+  - [ ] Judge interface with an offline lexical judge and a Claude judge
+  - [ ] `--judge` flag and faithfulness metric in the eval report
 - [ ] Simple web UI
+  - [ ] Single-page UI served by the API
+  - [ ] README section for UI, Docker and observability
