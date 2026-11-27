@@ -1,6 +1,6 @@
 [project]
 name = "docs-rag-evals"
-version = "0.1.0"
+version = "0.3.0"
 description = "Question answering over company documents with cited answers, refusals, and an evaluation suite."
 readme = "README.md"
 requires-python = ">=3.10"
