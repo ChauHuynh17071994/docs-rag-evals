@@ -78,3 +78,17 @@ def test_requests_are_logged_as_json():
     assert request_log["path"] == "/health"
     assert request_log["status"] == 200
     assert request_log["duration_ms"] >= 0
+
+
+def test_ui_is_served_at_root():
+    response = client.get("/")
+    assert response.status_code == 200
+    assert "text/html" in response.headers["content-type"]
+    assert 'fetch("ask"' in response.text
+
+
+def test_chunk_endpoint():
+    body = client.get("/chunks/it-security.md#1".replace("#", "%23")).json()
+    assert body["id"] == "it-security.md#1"
+    assert "2 hours" in body["text"]
+    assert client.get("/chunks/nope.md%230").status_code == 404

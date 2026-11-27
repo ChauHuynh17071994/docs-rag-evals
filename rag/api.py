@@ -6,8 +6,10 @@ import os
 import time
 from dataclasses import asdict
 from functools import lru_cache
+from pathlib import Path
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
 from . import __version__
@@ -81,6 +83,24 @@ def get_pipeline() -> RagPipeline:
     reranker = LexicalReranker() if os.environ.get("RAG_RERANK") == "1" else None
     rewriter = get_rewriter(os.environ.get("RAG_REWRITE", "none"))
     return RagPipeline(index, get_llm(), reranker=reranker, rewriter=rewriter)
+
+
+STATIC = Path(__file__).parent / "static"
+
+
+@app.get("/", response_class=HTMLResponse, include_in_schema=False)
+def ui() -> str:
+    """Single-page UI: a question box that renders the answer, its citations and timings."""
+    return (STATIC / "index.html").read_text(encoding="utf-8")
+
+
+@app.get("/chunks/{chunk_id}")
+def chunk(chunk_id: str) -> dict:
+    """Return a chunk by id so citations can be inspected."""
+    found = get_pipeline().index.get(chunk_id)
+    if found is None:
+        raise HTTPException(status_code=404, detail=f"unknown chunk: {chunk_id}")
+    return asdict(found)
 
 
 @app.get("/health")

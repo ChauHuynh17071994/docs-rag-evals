@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>docs-rag-evals</title>
+<style>
+  :root { --bg:#f7f7f5; --fg:#1d1d1b; --muted:#6b6b66; --card:#fff; --line:#e2e2dc; --accent:#2f5d8a; --warn:#9a5b00; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#161615; --fg:#ececea; --muted:#9a9a94; --card:#1f1f1d; --line:#33332f; --accent:#7fb0e0; --warn:#e0a84f; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.5 system-ui, sans-serif; }
+  main { max-width:760px; margin:0 auto; padding:32px 16px 64px; }
+  h1 { font-size:1.4rem; margin:0 0 4px; }
+  p.sub { margin:0 0 24px; color:var(--muted); }
+  form { display:flex; gap:8px; }
+  input { flex:1; min-width:0; padding:10px 12px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--fg); font:inherit; }
+  button { padding:10px 16px; border:0; border-radius:8px; background:var(--accent); color:#fff; font:inherit; cursor:pointer; }
+  button:disabled { opacity:.6; cursor:wait; }
+  .card { margin-top:20px; padding:16px; background:var(--card); border:1px solid var(--line); border-radius:10px; }
+  .answer { font-size:1.05rem; white-space:pre-wrap; }
+  .refused { color:var(--warn); }
+  .tags { display:flex; flex-wrap:wrap; gap:6px; margin-top:12px; }
+  .tag { font-size:.8rem; padding:2px 8px; border:1px solid var(--line); border-radius:999px; color:var(--muted); }
+  details { margin-top:10px; }
+  summary { cursor:pointer; color:var(--accent); font-family:ui-monospace, monospace; font-size:.9rem; }
+  blockquote { margin:6px 0 0; padding-left:12px; border-left:3px solid var(--line); color:var(--muted); white-space:pre-wrap; }
+  .examples button { background:transparent; color:var(--accent); border:1px solid var(--line); padding:4px 10px; font-size:.85rem; }
+  .examples { display:flex; flex-wrap:wrap; gap:6px; margin-top:12px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Ask the policy documents</h1>
+  <p class="sub">Answers cite the chunks they come from, or refuse when the documents do not say.</p>
+  <form id="ask">
+    <input id="q" name="question" placeholder="e.g. What is the daily allowance for trips abroad?" minlength="3" maxlength="500" required autocomplete="off">
+    <button id="go" type="submit">Ask</button>
+  </form>
+  <div class="examples" id="examples"></div>
+  <div id="out"></div>
+</main>
+<script>
+const examples = ["How fast must a stolen laptop be reported?", "per diem abroad", "Who approves a purchase of 20,000 euros?", "What is the CEO's salary?"];
+const $ = (id) => document.getElementById(id);
+const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
+
+for (const q of examples) {
+  const b = el("button", null, q); b.type = "button";
+  b.onclick = () => { $("q").value = q; $("ask").requestSubmit(); };
+  $("examples").append(b);
+}
+
+$("ask").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const out = $("out"); out.replaceChildren();
+  $("go").disabled = true;
+  try {
+    const res = await fetch("ask", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question: $("q").value }) });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    out.append(await render(await res.json()));
+  } catch (err) {
+    out.append(el("div", "card refused", `Request failed: ${err.message}`));
+  } finally {
+    $("go").disabled = false;
+  }
+});
+
+async function render(r) {
+  const card = el("div", "card");
+  card.append(el("div", "answer" + (r.refused ? " refused" : ""), r.answer));
+  const tags = el("div", "tags");
+  const t = r.timings || {};
+  for (const label of [
+    r.refused ? "refused" : (r.grounded ? "grounded" : "not grounded"),
+    `backend: ${r.backend}`,
+    `top score: ${r.top_score}`,
+    `${r.latency_ms} ms (retrieve ${t.retrieve_ms ?? "–"} ms)`,
+    r.usage && r.usage.cost_usd ? `$${r.usage.cost_usd}` : null,
+    r.invalid_citations.length ? `invalid citations: ${r.invalid_citations.join(", ")}` : null,
+  ]) if (label) tags.append(el("span", "tag", label));
+  card.append(tags);
+  for (const id of r.citations) {
+    const d = el("details"); d.append(el("summary", null, id));
+    const res = await fetch(`chunks/${encodeURIComponent(id)}`);
+    if (res.ok) { const c = await res.json(); d.append(el("blockquote", null, `${c.title}\n\n${c.text}`)); }
+    card.append(d);
+  }
+  return card;
+}
+</script>
+</body>
+</html>

@@ -45,5 +45,5 @@ Progress tracker for this project. Each item is one small, reviewable commit.
   - [x] Judge interface with an offline lexical judge and a Claude judge
   - [x] `--judge` flag and faithfulness metric in the eval report
 - [ ] Simple web UI
-  - [ ] Single-page UI served by the API
+  - [x] Single-page UI served by the API
   - [ ] README section for UI, Docker and observability
