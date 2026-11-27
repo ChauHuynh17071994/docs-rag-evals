@@ -42,3 +42,20 @@ jobs:
             eval_report.json
             eval_report.md
             eval_compare.md
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: docker build -t docs-rag-evals:ci .
+      - name: Smoke test the container
+        run: |
+          docker run -d --name rag -p 8000:8000 docs-rag-evals:ci
+          for i in $(seq 1 20); do curl -fs localhost:8000/health && break; sleep 1; done
+          curl -fs -X POST localhost:8000/ask -H "Content-Type: application/json" \
+               -d '{"question": "How fast must a stolen laptop be reported?"}' | tee answer.json
+          grep -q '"grounded":true' answer.json
+      - name: Container logs
+        if: always()
+        run: docker logs rag || true

@@ -34,9 +34,9 @@ Progress tracker for this project. Each item is one small, reviewable commit.
   - [x] Upload report and post it to the CI job summary
 
 ## v0.3 — production touches
-- [ ] Dockerfile + docker-compose
+- [x] Dockerfile + docker-compose
   - [x] Dockerfile with a prebuilt index and non-root user
-  - [ ] docker-compose service with health check and .env support
+  - [x] docker-compose service with health check and .env support
 - [ ] Structured logging and latency/cost tracking per request
   - [ ] JSON logger with request ids
   - [ ] Per-stage timings and token/cost accounting in the pipeline

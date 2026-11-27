@@ -1,0 +1,19 @@
+services:
+  api:
+    build: .
+    image: docs-rag-evals:latest
+    ports:
+      - "8000:8000"
+    # Optional: copy .env.example to .env to switch backend/retriever or add ANTHROPIC_API_KEY.
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      RAG_INDEX: /app/index.json
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
