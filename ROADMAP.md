@@ -44,6 +44,6 @@ Progress tracker for this project. Each item is one small, reviewable commit.
 - [x] LLM-as-judge faithfulness metric (optional, Claude backend)
   - [x] Judge interface with an offline lexical judge and a Claude judge
   - [x] `--judge` flag and faithfulness metric in the eval report
-- [ ] Simple web UI
+- [x] Simple web UI
   - [x] Single-page UI served by the API
-  - [ ] README section for UI, Docker and observability
+  - [x] README section for UI, Docker and observability

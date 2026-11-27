@@ -16,7 +16,11 @@ Most RAG demos stop at "it answered my question". This project treats a RAG syst
 - **Pluggable backends.** `claude` (Anthropic API) for real answers, `extractive` (offline, deterministic) for tests and CI.
 - **Dependency-free retrieval.** Markdown-aware chunking, an Okapi BM25 implementation written from scratch, an offline character n-gram hashing embedder, and hybrid search with reciprocal rank fusion (`--retriever bm25|dense|hybrid`).
 - **Evaluation suite.** 33 questions, including short keyword queries and unanswerable hard negatives, scored on six metrics with a quality gate in CI.
-- **API + CLI.** FastAPI service (`/ask`, `/health`) and a `rag` command line tool.
+- **Faithfulness judge.** `--judge lexical` (offline) or `--judge claude` (LLM-as-judge) checks every answer sentence against the chunks it cites.
+- **Production touches.** Docker image with a prebuilt index, JSON request logs with request ids, per-stage timings and token/cost tracking on every answer.
+- **API, CLI and web UI.** FastAPI service (`/ask`, `/health`, `/chunks/{id}`), a single-page UI at `/`, and a `rag` command line tool.
+
+![Web UI: a cited answer with the source chunk expanded](docs/ui.png)
 
 ## Architecture
 
@@ -34,6 +38,8 @@ flowchart LR
     RR --> L[LLM backend<br/>Claude or extractive]
     L --> V[Citation validator]
     V --> A[Answer + citations + metadata]
+    A --> J[Eval: metrics + optional<br/>faithfulness judge]
+    A --> O[JSON logs: request id,<br/>stage timings, tokens, cost]
 ```
 
 ## Evaluation
@@ -48,6 +54,7 @@ Run with `python -m rag.cli eval`. Metrics:
 | citation_valid | answered questions cite only retrieved chunks (1.000 in every config below) |
 | cites_gold | answered questions cite the correct chunk |
 | refusal_acc | refuses unanswerable questions, answers answerable ones |
+| faithfulness | (with `--judge`) share of answer sentences supported by the chunks they cite |
 
 ### Retrieval configuration comparison
 
@@ -96,6 +103,10 @@ What the numbers show:
 
 Caveats: the eval set is small, and the glossary, the dense refusal threshold (`--min-similarity 0.22`) and the short queries were written by the same person, so these are indicative results, not held-out ones. The remaining refusal errors (u02, u04) come from BM25 matching the company name in the corpus intro.
 
+### Faithfulness judge
+
+`python -m rag.cli eval --judge lexical` scores every non-refused answer against the chunks it cites. With the offline `extractive` backend faithfulness is 1.000 on all 33 questions, as expected: that backend copies a sentence from a retrieved chunk, so it cannot add facts. The metric is meant for generative backends. A unit test with a backend that appends an unsupported sentence confirms the judge catches it, and `--judge claude` uses Claude as the judge for paraphrased answers the lexical check cannot assess. I have not yet published Claude-backend numbers here, because they need an API key that CI does not have.
+
 CI fails if recall@k, MRR, citation validity or refusal accuracy drop below their thresholds (`evals/run_eval.py`). Every run posts the per-question report (`--markdown`) and the configuration comparison table to the GitHub Actions job summary and uploads them as the `eval-report` artifact.
 
 ## Quickstart
@@ -122,11 +133,25 @@ python -m evals.compare                     # retriever x reranker table
 python -m rag.cli --retriever hybrid --rerank --rewrite glossary eval
 RAG_BACKEND=claude python -m rag.cli eval   # compare backends
 
-# API
+python -m rag.cli eval --judge lexical      # + faithfulness metric
+
+# API + web UI (open http://localhost:8000)
 uvicorn rag.api:app --reload
 curl -X POST localhost:8000/ask -H "Content-Type: application/json" \
      -d '{"question": "Who approves a purchase of 20,000 euros?"}'
+
+# Docker (index is built into the image; .env is optional)
+docker compose up --build
 ```
+
+## Running in production
+
+- **Image.** `Dockerfile` installs dependencies in a cached layer, builds `index.json` at build time (`RAG_INDEX`), runs as a non-root user and has a health check on `/health`. The image is 248 MB (`python:3.12-slim` base). CI builds it and smoke-tests `/ask` in the container on every push.
+- **Configuration.** Same variables as the CLI flags: `RAG_BACKEND`, `RAG_RETRIEVER`, `RAG_RERANK`, `RAG_REWRITE`, `RAG_LOG_LEVEL` (see `.env.example`).
+- **Logs.** One JSON line per request (`method`, `path`, `status`, `duration_ms`) and per answer (`refused`, `grounded`, citation counts, stage timings, tokens, cost), all tagged with a `request_id`. Send `X-Request-ID` to reuse your own id; it is echoed in the response header and body.
+- **Cost.** The Claude backend reads token counts from the API response and prices them from a table in `rag/llm.py` (override with `RAG_PRICE_IN` / `RAG_PRICE_OUT`, USD per million tokens). The offline backend reports zero tokens.
+
+Example `/ask` response fields: `timings: {"rewrite_ms": 0.002, "retrieve_ms": 0.12, "generate_ms": 0.05}`, `usage: {"input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0}`.
 
 ## Project layout
 
@@ -140,12 +165,16 @@ rag/
   rewrite.py    glossary / Claude query rewriting for short queries
   llm.py        LLM protocol, Claude and extractive backends, prompt
   pipeline.py   retrieve -> refuse -> generate -> validate citations
-  api.py        FastAPI service
+  api.py        FastAPI service, request logging, UI route
+  observability.py JSON logging with request ids
+  static/       single-page web UI
   cli.py        ingest / ask / eval
 evals/
   dataset.jsonl 33 questions incl. short and unanswerable ones
   run_eval.py   metrics, report, CI gate
   compare.py    retriever comparison table
+  judge.py      faithfulness judges (lexical, Claude)
+  report.py     per-question Markdown report
 data/docs/      sample policy documents (fictional company)
 tests/          unit and API tests
 ```
