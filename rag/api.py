@@ -64,7 +64,7 @@ class AskResponse(BaseModel):
     backend: str
     request_id: str | None = None
     timings: dict[str, float] = Field(default_factory=dict)
-    usage: dict[str, float] = Field(default_factory=dict)
+    usage: dict[str, int | float] = Field(default_factory=dict)
 
 
 @lru_cache(maxsize=1)

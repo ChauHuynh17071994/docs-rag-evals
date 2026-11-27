@@ -54,6 +54,7 @@ def test_ask_returns_request_id_timings_and_usage():
     assert body["request_id"] == "test-req-1"
     assert {"rewrite_ms", "retrieve_ms", "generate_ms"} <= set(body["timings"])
     assert body["usage"]["cost_usd"] == 0.0
+    assert isinstance(body["usage"]["input_tokens"], int)  # token counts stay integers in JSON
 
 
 def test_requests_are_logged_as_json():

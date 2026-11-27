@@ -151,7 +151,7 @@ docker compose up --build
 - **Logs.** One JSON line per request (`method`, `path`, `status`, `duration_ms`) and per answer (`refused`, `grounded`, citation counts, stage timings, tokens, cost), all tagged with a `request_id`. Send `X-Request-ID` to reuse your own id; it is echoed in the response header and body.
 - **Cost.** The Claude backend reads token counts from the API response and prices them from a table in `rag/llm.py` (override with `RAG_PRICE_IN` / `RAG_PRICE_OUT`, USD per million tokens). The offline backend reports zero tokens.
 
-Example `/ask` response fields: `timings: {"rewrite_ms": 0.002, "retrieve_ms": 0.12, "generate_ms": 0.05}`, `usage: {"input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0}`.
+Example `/ask` response fields (offline backend, measured locally): `timings: {"rewrite_ms": 0.002, "retrieve_ms": 0.1, "generate_ms": 0.274}`, `usage: {"input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0}`.
 
 ## Project layout
 
