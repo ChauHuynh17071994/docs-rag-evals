@@ -24,7 +24,8 @@ def to_markdown(result: dict, title: str = "Eval report") -> str:
         f"## {title}",
         "",
         f"backend=`{result['backend']}` k={result['k']} n={metrics['n']}"
-        + (f" ({config})" if config else ""),
+        + (f" ({config})" if config else "")
+        + (f", judge=`{result['judge']}`" if result.get("judge") else ""),
         "",
         "| metric | value | gate |",
         "|---|---|---|",
@@ -52,6 +53,13 @@ def to_markdown(result: dict, title: str = "Eval report") -> str:
             f"| {row['id']} | {_cell(answer['question'], 60)} | `{top}` | {hit} | {match} "
             f"| {_mark(row['refusal_ok'])} | {_cell(answer['text'])} |"
         )
+
+    unfaithful = [r for r in result["rows"] if r.get("judge") and not r["judge"]["faithful"]]
+    if unfaithful:
+        lines += ["", "### Unfaithful answers", "", "| id | score | reason |", "|---|---|---|"]
+        for row in unfaithful:
+            verdict = row["judge"]
+            lines.append(f"| {row['id']} | {verdict['score']} | {_cell(verdict['reason'])} |")
 
     failures = [r["id"] for r in result["rows"] if not r["refusal_ok"] or (r["answerable"] and not r["hit"])]
     lines += ["", f"**Needs attention:** {', '.join(failures) if failures else 'none'}", ""]

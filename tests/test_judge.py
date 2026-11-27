@@ -60,3 +60,41 @@ def test_claude_judge_without_network():
     judge.model = "claude-sonnet-4-5"
     assert judge.judge("q", "a", [LAPTOP]).faithful
     assert LAPTOP.id in seen["messages"][0]["content"]
+
+
+class EmbellishingLLM:
+    """Copies the first chunk's first sentence, then adds an unsupported claim."""
+
+    name = "embellishing"
+
+    def answer(self, question, context):
+        first = context[0]
+        return f"{first.text.split('. ')[0]}. [{first.id}] Exceptions need CEO sign-off. [{first.id}]"
+
+
+def test_eval_with_judge_reports_faithfulness_and_lists_unfaithful_answers():
+    from evals.judge import LexicalJudge
+    from evals.report import to_markdown
+    from evals.run_eval import evaluate, load_dataset
+    from rag.index import Index
+    from rag.pipeline import RagPipeline
+
+    data = load_dataset("evals/dataset.jsonl")[:5]
+    result = evaluate(RagPipeline(Index.from_folder("data/docs"), EmbellishingLLM()), data, LexicalJudge())
+    assert result["judge"] == "lexical"
+    assert result["metrics"]["fully_faithful"] == 0.0
+    assert 0.0 < result["metrics"]["faithfulness"] < 1.0
+    md = to_markdown(result)
+    assert "### Unfaithful answers" in md and "CEO sign-off" in md
+
+
+def test_eval_without_judge_has_no_faithfulness_metric():
+    from evals.run_eval import evaluate, load_dataset
+    from rag.index import Index
+    from rag.llm import ExtractiveLLM
+    from rag.pipeline import RagPipeline
+
+    result = evaluate(
+        RagPipeline(Index.from_folder("data/docs"), ExtractiveLLM()), load_dataset("evals/dataset.jsonl")[:3]
+    )
+    assert "faithfulness" not in result["metrics"]

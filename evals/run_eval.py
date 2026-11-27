@@ -8,6 +8,8 @@ Metrics
 - cites_gold      answered questions that cite at least one gold chunk
 - refusal_acc     correct behaviour on unanswerable questions (refuses) and
                   answerable ones (does not refuse)
+- faithfulness    (with --judge) mean share of answer sentences supported by the
+                  chunks the answer cites; refusals are not judged
 """
 
 from __future__ import annotations
@@ -33,10 +35,14 @@ def load_dataset(path: str | Path) -> list[dict]:
     return [json.loads(line) for line in lines if line.strip()]
 
 
-def evaluate(pipeline: RagPipeline, dataset: list[dict]) -> dict:
+def evaluate(pipeline: RagPipeline, dataset: list[dict], judge=None) -> dict:
     rows = []
     for item in dataset:
         answer = pipeline.ask(item["question"])
+        verdict = None
+        if judge is not None and not answer.refused:
+            cited = [c for c in (pipeline.index.get(cid) for cid in answer.citations) if c]
+            verdict = asdict(judge.judge(item["question"], answer.text, cited))
         gold = set(item["gold"])
         answerable = bool(gold)
         rank = next((i + 1 for i, cid in enumerate(answer.retrieved) if cid in gold), None)
@@ -52,6 +58,7 @@ def evaluate(pipeline: RagPipeline, dataset: list[dict]) -> dict:
                 "citation_valid": not answer.invalid_citations and bool(answer.citations),
                 "cites_gold": bool(gold & set(answer.citations)),
                 "refusal_ok": answer.refused != answerable,
+                "judge": verdict,
                 "answer": asdict(answer),
             }
         )
@@ -73,13 +80,27 @@ def evaluate(pipeline: RagPipeline, dataset: list[dict]) -> dict:
         "refusal_acc": mean([r["refusal_ok"] for r in rows]),
         "avg_latency_ms": mean([r["answer"]["latency_ms"] for r in rows]),
     }
-    return {"backend": pipeline.llm.name, "k": pipeline.k, "metrics": metrics, "rows": rows}
+    judged = [r["judge"] for r in rows if r["judge"] is not None]
+    if judge is not None:
+        metrics["faithfulness"] = mean([v["score"] for v in judged])
+        metrics["fully_faithful"] = mean([v["faithful"] for v in judged])
+    result = {"backend": pipeline.llm.name, "k": pipeline.k, "metrics": metrics, "rows": rows}
+    if judge is not None:
+        result["judge"] = judge.name
+    return result
 
 
 def run(
-    pipeline: RagPipeline, dataset: str, report: str, gate: bool = False, markdown: str | None = None
+    pipeline: RagPipeline,
+    dataset: str,
+    report: str,
+    gate: bool = False,
+    markdown: str | None = None,
+    judge: str | None = None,
 ) -> int:
-    result = evaluate(pipeline, load_dataset(dataset))
+    from .judge import get_judge
+
+    result = evaluate(pipeline, load_dataset(dataset), judge=get_judge(judge))
     Path(report).write_text(json.dumps(result, indent=2), encoding="utf-8")
     if markdown:
         from .report import to_markdown  # local import: report imports THRESHOLDS from here
@@ -87,7 +108,8 @@ def run(
         Path(markdown).write_text(to_markdown(result), encoding="utf-8")
 
     metrics = result["metrics"]
-    print(f"backend={result['backend']} k={result['k']} n={metrics['n']}")
+    judged_by = f" judge={result['judge']}" if "judge" in result else ""
+    print(f"backend={result['backend']} k={result['k']} n={metrics['n']}{judged_by}")
     for name, value in metrics.items():
         if name.startswith("n"):
             continue

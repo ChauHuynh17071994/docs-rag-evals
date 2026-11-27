@@ -71,6 +71,12 @@ def main(argv: list[str] | None = None) -> int:
     ev.add_argument("--report", default="eval_report.json")
     ev.add_argument("--gate", action="store_true", help="exit 1 if metrics fall below thresholds")
     ev.add_argument("--markdown", help="also write a per-question Markdown report to this path")
+    ev.add_argument(
+        "--judge",
+        choices=["none", "lexical", "claude"],
+        default="none",
+        help="score faithfulness of answers to their cited chunks",
+    )
 
     args = parser.parse_args(argv)
 
@@ -87,7 +93,9 @@ def main(argv: list[str] | None = None) -> int:
 
     from evals.run_eval import run  # local import: evals is a dev-time package
 
-    return run(_pipeline(args), args.dataset, args.report, gate=args.gate, markdown=args.markdown)
+    return run(
+        _pipeline(args), args.dataset, args.report, gate=args.gate, markdown=args.markdown, judge=args.judge
+    )
 
 
 if __name__ == "__main__":

@@ -21,7 +21,7 @@ jobs:
       - name: Unit tests
         run: pytest -q
       - name: Eval quality gate (offline backend)
-        run: python -m rag.cli eval --gate --markdown eval_report.md
+        run: python -m rag.cli eval --gate --judge lexical --markdown eval_report.md
       - name: Retrieval configuration comparison
         if: always()
         run: python -m evals.compare --out eval_compare.md
