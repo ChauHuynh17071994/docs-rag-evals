@@ -1,0 +1,16 @@
+.git
+.github
+.venv
+**/__pycache__
+*.pyc
+.pytest_cache
+.ruff_cache
+*.egg-info
+build
+dist
+.env
+index.json
+eval_report.*
+eval_compare.md
+tests
+evals

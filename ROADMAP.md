@@ -35,7 +35,7 @@ Progress tracker for this project. Each item is one small, reviewable commit.
 
 ## v0.3 — production touches
 - [ ] Dockerfile + docker-compose
-  - [ ] Dockerfile with a prebuilt index and non-root user
+  - [x] Dockerfile with a prebuilt index and non-root user
   - [ ] docker-compose service with health check and .env support
 - [ ] Structured logging and latency/cost tracking per request
   - [ ] JSON logger with request ids
