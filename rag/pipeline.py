@@ -4,12 +4,17 @@ from __future__ import annotations
 
 import re
 import time
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 
 from .index import Hit, Index
-from .llm import LLM, REFUSAL
+from .llm import LLM, REFUSAL, Usage, generate
 from .rerank import Reranker
 from .rewrite import Rewriter
+
+
+def _ms_since(start: float) -> float:
+    return round((time.perf_counter() - start) * 1000, 3)
+
 
 CITATION = re.compile(r"\[([^\[\]]+?\.md#\d+)\]")
 
@@ -63,8 +68,12 @@ class RagPipeline:
 
     def ask(self, question: str) -> Answer:
         start = time.perf_counter()
+        timings: dict[str, float] = {}
         query = self.rewriter.rewrite(question) if self.rewriter else question
+        timings["rewrite_ms"] = _ms_since(start)
+        t = time.perf_counter()
         hits = self.retrieve(query)
+        timings["retrieve_ms"] = _ms_since(t)
         top = max((h.score for h in hits), default=0.0)
         top_dense = max((h.dense for h in hits), default=0.0)
         retrieved = [h.chunk.id for h in hits]
@@ -72,6 +81,8 @@ class RagPipeline:
             "retriever": self.index.retriever,
             "reranker": self.reranker.name if self.reranker else None,
             "top_dense": round(top_dense, 3),
+            "timings": timings,
+            "usage": asdict(Usage()),
         }
         if query != question:
             meta["rewritten_query"] = query
@@ -80,7 +91,10 @@ class RagPipeline:
         if top < self.min_score and top_dense < self.min_similarity:
             return self._result(question, REFUSAL, [], retrieved, top, start, meta)
 
-        text = self.llm.answer(question, [h.chunk for h in hits])
+        t = time.perf_counter()
+        text, usage = generate(self.llm, question, [h.chunk for h in hits])
+        timings["generate_ms"] = _ms_since(t)
+        meta["usage"] = asdict(usage)
         return self._result(question, text, retrieved, retrieved, top, start, meta)
 
     def _result(self, question, text, allowed, retrieved, top, start, meta) -> Answer:

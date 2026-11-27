@@ -114,3 +114,60 @@ def test_extractive_backend_matches_plural_forms():
 
     chunk = Chunk("it.md#0", "it.md", "IT", "Passwords must be at least 14 characters long.")
     assert "14 characters" in ExtractiveLLM().answer("minimum password length", [chunk])
+
+
+def test_answer_meta_has_stage_timings_and_usage():
+    answer = RagPipeline(Index.from_folder("data/docs"), ExtractiveLLM()).ask(
+        "How fast must a stolen laptop be reported?"
+    )
+    timings = answer.meta["timings"]
+    assert set(timings) == {"rewrite_ms", "retrieve_ms", "generate_ms"}
+    assert all(v >= 0 for v in timings.values())
+    assert answer.meta["usage"] == {"input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0}
+
+
+def test_refusal_skips_generation_timing():
+    answer = RagPipeline(Index.from_folder("data/docs"), ExtractiveLLM()).ask("zzz qqq xyzzy")
+    assert answer.refused
+    assert "generate_ms" not in answer.meta["timings"]
+
+
+def test_generate_reports_usage_from_backends_that_support_it():
+    from rag.llm import Usage, generate
+
+    class MeteredLLM:
+        name = "metered"
+
+        def generate(self, question, context):
+            return "ok", Usage(120, 30, 0.00081)
+
+    text, usage = generate(MeteredLLM(), "q", [])
+    assert text == "ok" and usage.input_tokens == 120 and usage.cost_usd == 0.00081
+
+
+def test_estimate_cost_uses_price_table_and_env_override(monkeypatch):
+    from rag.llm import estimate_cost
+
+    assert estimate_cost("claude-sonnet-4-5", 1_000_000, 0) == 3.0
+    assert estimate_cost("unknown-model", 1000, 1000) == 0.0
+    monkeypatch.setenv("RAG_PRICE_IN", "2")
+    monkeypatch.setenv("RAG_PRICE_OUT", "4")
+    assert estimate_cost("unknown-model", 500_000, 250_000) == 2.0
+
+
+def test_claude_backend_parses_usage_without_network():
+    from types import SimpleNamespace
+
+    from rag.llm import ClaudeLLM
+
+    message = SimpleNamespace(
+        content=[SimpleNamespace(type="text", text="Within 2 hours. [it-security.md#1]")],
+        usage=SimpleNamespace(input_tokens=400, output_tokens=20),
+    )
+    llm = ClaudeLLM.__new__(ClaudeLLM)  # skip __init__: no anthropic client or API key needed
+    llm.client = SimpleNamespace(messages=SimpleNamespace(create=lambda **_: message))
+    llm.model, llm.max_tokens = "claude-sonnet-4-5", 300
+    text, usage = llm.generate("q", [])
+    assert text.endswith("[it-security.md#1]")
+    assert (usage.input_tokens, usage.output_tokens) == (400, 20)
+    assert usage.cost_usd == round((400 * 3 + 20 * 15) / 1_000_000, 6)

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import os
 import re
+from dataclasses import dataclass
 from typing import Protocol
 
 from .bm25 import stems
@@ -24,11 +25,40 @@ Rules:
 
 REFUSAL = "I don't know based on the available documents."
 
+# List prices in USD per million tokens (input, output). Override with RAG_PRICE_IN / RAG_PRICE_OUT
+# when a model is missing here or prices change.
+PRICES_PER_MTOK: dict[str, tuple[float, float]] = {
+    "claude-haiku-4-5": (1.0, 5.0),
+    "claude-sonnet-4-5": (3.0, 15.0),
+    "claude-opus-4-5": (5.0, 25.0),
+}
+
+
+@dataclass(frozen=True)
+class Usage:
+    input_tokens: int = 0
+    output_tokens: int = 0
+    cost_usd: float = 0.0
+
+
+def estimate_cost(model: str, input_tokens: int, output_tokens: int) -> float:
+    price_in, price_out = PRICES_PER_MTOK.get(model, (0.0, 0.0))
+    price_in = float(os.environ.get("RAG_PRICE_IN", price_in))
+    price_out = float(os.environ.get("RAG_PRICE_OUT", price_out))
+    return round((input_tokens * price_in + output_tokens * price_out) / 1_000_000, 6)
+
 
 class LLM(Protocol):
     name: str
 
     def answer(self, question: str, context: list[Chunk]) -> str: ...
+
+
+def generate(llm: LLM, question: str, context: list[Chunk]) -> tuple[str, Usage]:
+    """Answer and report token usage. Backends without ``generate`` report zero usage."""
+    if hasattr(llm, "generate"):
+        return llm.generate(question, context)
+    return llm.answer(question, context), Usage()
 
 
 def format_context(context: list[Chunk]) -> str:
@@ -66,6 +96,9 @@ class ClaudeLLM:
         self.max_tokens = max_tokens
 
     def answer(self, question: str, context: list[Chunk]) -> str:
+        return self.generate(question, context)[0]
+
+    def generate(self, question: str, context: list[Chunk]) -> tuple[str, Usage]:
         message = self.client.messages.create(
             model=self.model,
             max_tokens=self.max_tokens,
@@ -78,7 +111,9 @@ class ClaudeLLM:
                 }
             ],
         )
-        return "".join(b.text for b in message.content if b.type == "text").strip()
+        text = "".join(b.text for b in message.content if b.type == "text").strip()
+        tokens_in, tokens_out = message.usage.input_tokens, message.usage.output_tokens
+        return text, Usage(tokens_in, tokens_out, estimate_cost(self.model, tokens_in, tokens_out))
 
 
 def get_llm(backend: str | None = None) -> LLM:
