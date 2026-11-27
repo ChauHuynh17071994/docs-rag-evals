@@ -24,3 +24,20 @@ def test_ask_validates_input():
 
 def test_health_reports_retriever():
     assert client.get("/health").json()["retriever"] == "bm25"
+
+
+def test_pipeline_loads_prebuilt_index_and_rewriter(tmp_path, monkeypatch):
+    from rag import api
+    from rag.index import Index
+
+    path = tmp_path / "index.json"
+    Index.from_folder("data/docs").save(path)
+    monkeypatch.setenv("RAG_INDEX", str(path))
+    monkeypatch.setenv("RAG_REWRITE", "glossary")
+    api.get_pipeline.cache_clear()
+    try:
+        pipeline = api.get_pipeline()
+        assert len(pipeline.index.chunks) == len(Index.from_folder("data/docs").chunks)
+        assert pipeline.rewriter is not None and pipeline.rewriter.name == "glossary"
+    finally:
+        api.get_pipeline.cache_clear()
